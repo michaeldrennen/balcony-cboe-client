@@ -51,47 +51,32 @@ final class Client
     }
 
     /**
-     * Parse Cboe historical CSV (Date,Open,High,Low,Close). Malformed rows are skipped.
+     * Parse the Cboe delayed-quotes historical JSON ({"symbol", "timestamp", "data": [{date, open,
+     * high, low, close, volume}, ...]}, oldest first). Rows with a missing date or non-numeric price
+     * are skipped.
      *
      * @return CboeQuoteDTO[]
      */
-    public function parse(string $csv, string $ticker): array
+    public function parse(string $json, string $ticker): array
     {
-        $csv = ltrim($csv, "\xEF\xBB\xBF");
-        $lines = preg_split('/\r\n|\r|\n/', trim($csv)) ?: [];
+        $decoded = json_decode(ltrim($json, "\xEF\xBB\xBF"), true);
 
-        if ($lines === []) {
-            throw BalconyClientException::malformed('Cboe CSV is empty.');
+        if (!is_array($decoded) || !isset($decoded['data']) || !is_array($decoded['data'])) {
+            throw BalconyClientException::malformed('Cboe history JSON has no "data" array.');
         }
 
-        $header = array_map(static fn (string $h): string => strtolower(trim($h)), str_getcsv(array_shift($lines)));
-        $required = ['date', 'open', 'high', 'low', 'close'];
-
-        foreach ($required as $column) {
-            if (!in_array($column, $header, true)) {
-                throw BalconyClientException::malformed(sprintf('Cboe CSV is missing the "%s" column.', $column));
-            }
-        }
-
-        $idx = array_flip($header);
         $rows = [];
 
-        foreach ($lines as $line) {
-            if (trim($line) === '') {
+        foreach ($decoded['data'] as $row) {
+            if (!is_array($row)) {
                 continue;
             }
 
-            $cells = str_getcsv($line);
-
-            if (count($cells) < count($header)) {
-                continue;
-            }
-
-            $observedAt = self::parseDate($cells[$idx['date']] ?? null);
-            $open = self::parseNumber($cells[$idx['open']] ?? null);
-            $high = self::parseNumber($cells[$idx['high']] ?? null);
-            $low = self::parseNumber($cells[$idx['low']] ?? null);
-            $close = self::parseNumber($cells[$idx['close']] ?? null);
+            $observedAt = self::parseDate(self::stringOrNull($row['date'] ?? null));
+            $open = self::parseNumber(self::stringOrNull($row['open'] ?? null));
+            $high = self::parseNumber(self::stringOrNull($row['high'] ?? null));
+            $low = self::parseNumber(self::stringOrNull($row['low'] ?? null));
+            $close = self::parseNumber(self::stringOrNull($row['close'] ?? null));
 
             if ($observedAt === null || $open === null || $high === null || $low === null || $close === null) {
                 continue;
@@ -101,6 +86,11 @@ final class Client
         }
 
         return $rows;
+    }
+
+    private static function stringOrNull(mixed $value): ?string
+    {
+        return is_string($value) || is_int($value) || is_float($value) ? (string) $value : null;
     }
 
     public static function parseNumber(?string $raw): ?float

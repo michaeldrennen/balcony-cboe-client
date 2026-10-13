@@ -1,6 +1,6 @@
 # balcony-cboe-client
 
-PHP 8.1+ client for Cboe historical index CSV files (for example `_VIX` and `_VVIX`), part of The Balcony macro flow system.
+PHP 8.1+ client for Cboe's delayed-quotes historical JSON (for example `_VIX`, `_VVIX`, `_VIX9D` and `_SKEW`), part of The Balcony macro flow system.
 
 ## Usage (framework-agnostic)
 
@@ -15,7 +15,7 @@ foreach ($client->fetchQuotes() as $dto) {
 }
 ```
 
-Rows with a short column count or non-numeric prices are skipped.
+Data comes from `https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/{TICKER}.json`, full daily history oldest first. Rows with a missing date or non-numeric prices are skipped.
 
 ## Laravel persistence
 

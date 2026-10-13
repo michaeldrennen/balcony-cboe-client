@@ -8,7 +8,7 @@ use InvalidArgumentException;
 
 final class Config
 {
-    public const DEFAULT_URL_TEMPLATE = 'https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/{TICKER}.csv';
+    public const DEFAULT_URL_TEMPLATE = 'https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/{TICKER}.json';
 
     public function __construct(
         public readonly string $ticker = '_VIX',
